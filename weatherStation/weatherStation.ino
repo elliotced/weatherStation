@@ -7,14 +7,14 @@
 
 // include libraries
 #include "U8glib.h"
-#include <DHT11.h>
+#include "DHT.h"
 #include <RotaryEncoder.h>
 
 // include constants
-const int datas = 3; //number of data that can be displayed, starts at 0
+const int datas = 3; //number of data that can be displayed
 
 const int dhtPin = 2;
-const int lightPin = 3;
+const uint8_t lightPin = A0;
 const uint8_t  rotaryPin1 = A1;
 const uint8_t  rotaryPin2 = A2;
 const uint8_t  rotaryPin3 = A3;
@@ -23,13 +23,14 @@ const uint8_t  rotaryPin3 = A3;
 
 // construct objects
 U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_NO_ACK);	// Display which does not send AC
-DHT11 dht11(dhtPin);
+DHT dht(dhtPin, DHT11);
 RotaryEncoder encoder(rotaryPin2, rotaryPin3, RotaryEncoder::LatchMode::TWO03);
 
 void setup(void) {
   // init software
   Serial.begin(9600);
   u8g.setFont(u8g_font_helvB12);
+  dht.begin();
 }
 
 void loop(void) {
@@ -46,6 +47,7 @@ void loop(void) {
 
   if (newPos != lastPos) {
 
+    if (!mode){
     index += 1 * int(encoder.getDirection());
     if (index < 1) {
       index = datas;
@@ -54,8 +56,7 @@ void loop(void) {
       index = 1;
     }
 
-    if (!mode){
-      menuWrite(index);
+    menuWrite(index);
     }
 
     lastPos = newPos;
@@ -82,7 +83,26 @@ void loop(void) {
   }
 
   if (mode) {
-    dataWrite("20 C");
+    if (index == 1) {
+      dataWrite(String(dht.readTemperature(),1)+" C");
+    }
+    else if (index == 2) {
+      dataWrite(String(dht.readHumidity(), 0)+" %");
+    }
+    else if (index == 3) {
+      int lightValue = analogRead(A0);
+      static String lightData = "Unknown";
+      if (lightValue < 200) {
+        lightData = ("Bright");
+      } else if (lightValue < 500) {
+        lightData = ("Light");
+      } else if (lightValue < 800) {
+        lightData = ("Dim");
+      } else {
+        lightData = ("Dark");
+      }
+      dataWrite(lightData);
+    }
   }
 }
 
